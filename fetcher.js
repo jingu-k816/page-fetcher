@@ -1,29 +1,45 @@
 const request = require("request");
 const fs = require("fs");
-// const readline = require('readline');
+const { rawListeners } = require("process");
+const readline = require('readline');
+const { F_OK, W_OK } = require("constants");
 
 const url = process.argv.slice(2)[0];
 const path = process.argv.slice(2)[1];
 
-// const rl = readline.createInterface({
-//   input: process.stdin,
-//   output: process.stdout
-// });
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
 request(url, (error, response, body) => {
   if (error) {
     throw error
-  } else if(response.statusCode === 404){
-      throw new Error(`The URL is invalid. Resource was not found`);
-  } else if (response.statusCode === 500){
-      throw new Error(`The server had an error`);
-  } else{
-    fs.writeFile(path, body, (err) => {
-      if (err) {
-        throw new Error(`Write a proper path`);
-      } 
-      console.log(`Downloaded and saved ${body.length} bytes to ${path}`);
-      
-    });
-  }
+  } else if(response.statusCode !== 200){
+      throw new Error(`Error found: ERROR ${response.statusCode}`);
+  } 
+    fs.access(path, F_OK, (err) => {
+      if(err){
+        fs.writeFile(path, body, (err) => {
+          if(err){
+            throw new Error(`Need a valid path`);
+          }
+          console.log(`Downloaded and saved ${body.length} bytes to ${path}`);
+          rl.close();
+        });
+      }
+        rl.question(`type y to overwrite otherwise type anything else to skip and close: `, (answer) =>{
+          if(answer === 'y'){
+            fs.writeFile(path, body, (err) => {
+              if(err){
+                throw new Error(`There was an error with path`);
+              }
+              console.log(`Downloaded and saved ${body.length} bytes to ${path}`);
+              rl.close();
+            });
+          }else{
+              rl.close();
+          }
+        });
+    }); 
 });
